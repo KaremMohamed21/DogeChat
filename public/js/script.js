@@ -1,3 +1,4 @@
+const socket = io.connect("https://dogechat-app.herokuapp.com/");
 const { RTCPeerConnection, RTCSessionDescription } = window;
 const peerConnection = new RTCPeerConnection();
 const existingCalls = [];
@@ -5,16 +6,6 @@ let isAlreadyCalling = false;
 let getCalled = false;
 
 // Helper Functions
-async function callUser(socketId) {
-  const offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(new RTCSessionDescription(offer));
-
-  socket.emit("call-user", {
-    offer,
-    to: socketId
-  });
-}
-
 function unselectUsersFromList() {
   const alreadySelectedUser = document.querySelectorAll(".active-user.active-user--selected");
 
@@ -62,8 +53,6 @@ function createUserItemContainer(socketId) {
   return userContainerEl;
 }
 
-const socket = io.connect("https://dogechat-app.herokuapp.com");
-
 // Handle Socket Connections
 socket.on("update-user-list", ({ users }) => {
   updateUserList(users);
@@ -78,20 +67,17 @@ socket.on("remove-user", ({ socketId }) => {
 });
 
 // Handle PEER connections
+async function callUser(socketId) {
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(new RTCSessionDescription(offer));
+
+  socket.emit("call-user", {
+    offer,
+    to: socketId
+  });
+}
 
 socket.on("call-made", async (data) => {
-  if (getCalled) {
-    const confirmed = confirm(`User "Socket: ${data.socket}" wants to call you. Do accept this call?`);
-
-    if (!confirmed) {
-      socket.emit("reject-call", {
-        from: data.socket
-      });
-
-      return;
-    }
-  }
-
   await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
   const answer = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(new RTCSessionDescription(answer));
@@ -100,7 +86,6 @@ socket.on("call-made", async (data) => {
     answer,
     to: data.socket
   });
-  getCalled = true;
 });
 
 socket.on("answer-made", async (data) => {
@@ -110,11 +95,6 @@ socket.on("answer-made", async (data) => {
     callUser(data.socket);
     isAlreadyCalling = true;
   }
-});
-
-socket.on("call-rejected", (data) => {
-  alert(`User: "Socket: ${data.socket}" rejected your call.`);
-  unselectUsersFromList();
 });
 
 peerConnection.ontrack = function ({ streams: [stream] }) {

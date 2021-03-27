@@ -50,13 +50,6 @@ io.on("connection", (socket) => {
     });
   });
 
-  // ON socket reject-call
-  socket.on("reject-call", (data) => {
-    socket.to(data.from).emit("call-rejected", {
-      socket: socket.id
-    });
-  });
-
   // ON socket Disconnection
   socket.on("disconnect", () => {
     console.log("socket disconnected!!!");
