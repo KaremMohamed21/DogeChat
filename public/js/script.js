@@ -1,29 +1,17 @@
-const socket = io.connect("https://dogechat-app.herokuapp.com/");
-const { RTCPeerConnection, RTCSessionDescription } = window;
-const peerConnection = new RTCPeerConnection();
-const existingCalls = [];
 let isAlreadyCalling = false;
 let getCalled = false;
 
-// Helper Functions
+const existingCalls = [];
+
+const { RTCPeerConnection, RTCSessionDescription } = window;
+
+const peerConnection = new RTCPeerConnection();
+
 function unselectUsersFromList() {
   const alreadySelectedUser = document.querySelectorAll(".active-user.active-user--selected");
 
   alreadySelectedUser.forEach((el) => {
     el.setAttribute("class", "active-user");
-  });
-}
-
-function updateUserList(socketIds) {
-  const activeUserContainer = document.getElementById("active-user-container");
-
-  socketIds.forEach((socketId) => {
-    const alreadyExistingUser = document.getElementById(socketId);
-    if (!alreadyExistingUser) {
-      const userContainerEl = createUserItemContainer(socketId);
-
-      activeUserContainer.appendChild(userContainerEl);
-    }
   });
 }
 
@@ -41,19 +29,40 @@ function createUserItemContainer(socketId) {
 
   userContainerEl.addEventListener("click", () => {
     unselectUsersFromList();
-
     userContainerEl.setAttribute("class", "active-user active-user--selected");
-
     const talkingWithInfo = document.getElementById("talking-with-info");
     talkingWithInfo.innerHTML = `Talking with: "Socket: ${socketId}"`;
-
     callUser(socketId);
   });
 
   return userContainerEl;
 }
 
-// Handle Socket Connections
+async function callUser(socketId) {
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(new RTCSessionDescription(offer));
+
+  socket.emit("call-user", {
+    offer,
+    to: socketId
+  });
+}
+
+function updateUserList(socketIds) {
+  const activeUserContainer = document.getElementById("active-user-container");
+
+  socketIds.forEach((socketId) => {
+    const alreadyExistingUser = document.getElementById(socketId);
+    if (!alreadyExistingUser) {
+      const userContainerEl = createUserItemContainer(socketId);
+
+      activeUserContainer.appendChild(userContainerEl);
+    }
+  });
+}
+
+const socket = io.connect("localhost:5000");
+
 socket.on("update-user-list", ({ users }) => {
   updateUserList(users);
 });
@@ -66,18 +75,19 @@ socket.on("remove-user", ({ socketId }) => {
   }
 });
 
-// Handle PEER connections
-async function callUser(socketId) {
-  const offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(new RTCSessionDescription(offer));
-
-  socket.emit("call-user", {
-    offer,
-    to: socketId
-  });
-}
-
 socket.on("call-made", async (data) => {
+  if (getCalled) {
+    const confirmed = confirm(`User "Socket: ${data.socket}" wants to call you. Do accept this call?`);
+
+    if (!confirmed) {
+      socket.emit("reject-call", {
+        from: data.socket
+      });
+
+      return;
+    }
+  }
+
   await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
   const answer = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(new RTCSessionDescription(answer));
@@ -86,6 +96,7 @@ socket.on("call-made", async (data) => {
     answer,
     to: data.socket
   });
+  getCalled = true;
 });
 
 socket.on("answer-made", async (data) => {
@@ -97,6 +108,11 @@ socket.on("answer-made", async (data) => {
   }
 });
 
+socket.on("call-rejected", (data) => {
+  alert(`User: "Socket: ${data.socket}" rejected your call.`);
+  unselectUsersFromList();
+});
+
 peerConnection.ontrack = function ({ streams: [stream] }) {
   const remoteVideo = document.getElementById("remote-video");
   if (remoteVideo) {
@@ -105,10 +121,7 @@ peerConnection.ontrack = function ({ streams: [stream] }) {
 };
 
 navigator.getUserMedia(
-  {
-    video: true,
-    audio: true
-  },
+  { video: true, audio: true },
   (stream) => {
     const localVideo = document.getElementById("local-video");
     if (localVideo) {
@@ -117,7 +130,7 @@ navigator.getUserMedia(
 
     stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream));
   },
-  (err) => {
-    console.log(err.message);
+  (error) => {
+    console.warn(error.message);
   }
 );
