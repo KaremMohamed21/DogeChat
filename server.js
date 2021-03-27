@@ -1,6 +1,6 @@
 const express = require("express");
 const app = express();
-const server = require("http").Server(app);
+const server = require("http").createServer(app);
 const io = require("socket.io")(server);
 const path = require("path");
 
@@ -47,6 +47,13 @@ io.on("connection", (socket) => {
     socket.to(data.to).emit("answer-made", {
       socket: socket.id,
       answer: data.answer
+    });
+  });
+
+  // ON socket reject-call
+  socket.on("reject-call", (data) => {
+    socket.to(data.from).emit("call-rejected", {
+      socket: socket.id
     });
   });
 
