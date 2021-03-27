@@ -1,17 +1,39 @@
+const socket = io.connect("https://dogechat-app.herokuapp.com/");
+const { RTCPeerConnection, RTCSessionDescription } = window;
+const peerConnection = new RTCPeerConnection();
+const existingCalls = [];
 let isAlreadyCalling = false;
 let getCalled = false;
 
-const existingCalls = [];
+// Helper Functions
+async function callUser(socketId) {
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(new RTCSessionDescription(offer));
 
-const { RTCPeerConnection, RTCSessionDescription } = window;
-
-const peerConnection = new RTCPeerConnection();
+  socket.emit("call-user", {
+    offer,
+    to: socketId
+  });
+}
 
 function unselectUsersFromList() {
   const alreadySelectedUser = document.querySelectorAll(".active-user.active-user--selected");
 
   alreadySelectedUser.forEach((el) => {
     el.setAttribute("class", "active-user");
+  });
+}
+
+function updateUserList(socketIds) {
+  const activeUserContainer = document.getElementById("active-user-container");
+
+  socketIds.forEach((socketId) => {
+    const alreadyExistingUser = document.getElementById(socketId);
+    if (!alreadyExistingUser) {
+      const userContainerEl = createUserItemContainer(socketId);
+
+      activeUserContainer.appendChild(userContainerEl);
+    }
   });
 }
 
@@ -29,40 +51,19 @@ function createUserItemContainer(socketId) {
 
   userContainerEl.addEventListener("click", () => {
     unselectUsersFromList();
+
     userContainerEl.setAttribute("class", "active-user active-user--selected");
+
     const talkingWithInfo = document.getElementById("talking-with-info");
     talkingWithInfo.innerHTML = `Talking with: "Socket: ${socketId}"`;
+
     callUser(socketId);
   });
 
   return userContainerEl;
 }
 
-async function callUser(socketId) {
-  const offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(new RTCSessionDescription(offer));
-
-  socket.emit("call-user", {
-    offer,
-    to: socketId
-  });
-}
-
-function updateUserList(socketIds) {
-  const activeUserContainer = document.getElementById("active-user-container");
-
-  socketIds.forEach((socketId) => {
-    const alreadyExistingUser = document.getElementById(socketId);
-    if (!alreadyExistingUser) {
-      const userContainerEl = createUserItemContainer(socketId);
-
-      activeUserContainer.appendChild(userContainerEl);
-    }
-  });
-}
-
-const socket = io.connect("https://dogechat-app.herokuapp.com/");
-
+// Handle Socket Connections
 socket.on("update-user-list", ({ users }) => {
   updateUserList(users);
 });
@@ -74,6 +75,8 @@ socket.on("remove-user", ({ socketId }) => {
     elToRemove.remove();
   }
 });
+
+// Handle PEER connections
 
 socket.on("call-made", async (data) => {
   if (getCalled) {
@@ -121,7 +124,10 @@ peerConnection.ontrack = function ({ streams: [stream] }) {
 };
 
 navigator.getUserMedia(
-  { video: true, audio: true },
+  {
+    video: true,
+    audio: true
+  },
   (stream) => {
     const localVideo = document.getElementById("local-video");
     if (localVideo) {
@@ -130,7 +136,7 @@ navigator.getUserMedia(
 
     stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream));
   },
-  (error) => {
-    console.warn(error.message);
+  (err) => {
+    console.log(err.message);
   }
 );
