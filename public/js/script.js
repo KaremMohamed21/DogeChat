@@ -1,4 +1,4 @@
-const socket = io.connect("localhost:3000");
+const socket = io.connect("https://dogechat-app.herokuapp.com/");
 const { RTCPeerConnection, RTCSessionDescription } = window;
 const peerConnection = new RTCPeerConnection();
 const existingCalls = [];
@@ -104,7 +104,7 @@ peerConnection.ontrack = function ({ streams: [stream] }) {
   }
 };
 
-navigator.mediaDevices.getUserMedia(
+navigator.getUserMedia(
   {
     video: true,
     audio: true
