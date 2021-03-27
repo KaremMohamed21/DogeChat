@@ -104,20 +104,19 @@ peerConnection.ontrack = function ({ streams: [stream] }) {
   }
 };
 
-navigator.getUserMedia(
-  {
+navigator.mediaDevices
+  .getUserMedia({
     video: true,
     audio: true
-  },
-  (stream) => {
+  })
+  .then((stream) => {
     const localVideo = document.getElementById("local-video");
     if (localVideo) {
       localVideo.srcObject = stream;
     }
 
     stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream));
-  },
-  (err) => {
+  })
+  .catch((err) => {
     console.log(err.message);
-  }
-);
+  });
