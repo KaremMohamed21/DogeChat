@@ -1,4 +1,3 @@
-const socket = io.connect("https://dogechat-app.herokuapp.com/");
 const { RTCPeerConnection, RTCSessionDescription } = window;
 const peerConnection = new RTCPeerConnection();
 const existingCalls = [];
@@ -62,6 +61,8 @@ function createUserItemContainer(socketId) {
 
   return userContainerEl;
 }
+
+const socket = io.connect("https://dogechat-app.herokuapp.com");
 
 // Handle Socket Connections
 socket.on("update-user-list", ({ users }) => {
