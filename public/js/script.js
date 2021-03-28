@@ -1,6 +1,13 @@
 const socket = io.connect("https://dogechat-app.herokuapp.com/");
 const { RTCPeerConnection, RTCSessionDescription } = window;
-const peerConnection = new RTCPeerConnection();
+
+const iceServers = {
+  iceServer: {
+    urls: "stun:stun.l.google.com:19302"
+  }
+};
+
+const peerConnection = new RTCPeerConnection(iceServers);
 const existingCalls = [];
 let isAlreadyCalling = false;
 let getCalled = false;
