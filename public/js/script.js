@@ -1,4 +1,4 @@
-const socket = io.connect("localhost:3000");
+const socket = io.connect("https://dogechat-app.herokuapp.com/");
 const { RTCPeerConnection, RTCSessionDescription } = window;
 
 const iceServers = {
